@@ -1,5 +1,7 @@
 push!(LOAD_PATH, ".")
 
+using ProfileView
+
 type Vector3d
   x::Float64
   y::Float64
@@ -19,16 +21,8 @@ function calcTestIterativeVector(val::Vector3d,limit::Float64)
   a =val
   while a.x < limit
     a.x+= 1.0/a.x
-    #a.y+= 1.0/a.y
-    #a.z+= 1.0/a.z
-  end
-  return(a)
-end
-
-function calcTestIterative(a::Float64,limit::Float64)
-  #a = val
-  while a < limit
-    a+= 1.0/a
+    a.y+= 1.0/a.y
+    a.z+= 1.0/a.z
   end
   return(a)
 end
@@ -78,19 +72,17 @@ function calcTestRecursive(val,limit)
   end
 end
 
-function runTest(fct,nRuns,limit)
-  #result = 0.0
-  for i=1:nRuns
-    start=1.0
-    fct(start,limit)
+function calcTestIterative(a::Float64,limit::Float64)
+  while a < limit
+    a= a+1.0/a
   end
-  #print(result)
+  return(a)
 end
 
-function runTestVector(fct,nRuns,limit)
+
+function runTest(fct,nRuns,start,limit)
   #result = 0.0
   for i=1:nRuns
-    start = Vector3d(1.0,0.0,0.0)
     fct(start,limit)
   end
   #print(result)
@@ -102,20 +94,24 @@ end
 #Profile.clear()
 #Profile.init()
 #@profile runTestOpt(100000
-nRuns = 1000
-limit = 200.0
+nRuns = 20000
+limit = 100.0
 #@time runTest(calcTestIterativeArray,nRuns,[1.0],limit)
 #@time runTest(calcTestRecursiveArray,nRuns,[1.0],limit)
-@time runTest(calcTestIterative,nRuns,limit)
+@time runTest(calcTestIterative,nRuns,1.0,limit)
 #@time runTest(calcTestRecursive,nRuns,1.0,limit)
-@time runTestVector(calcTestIterativeVector,nRuns,limit)
+@time runTest(calcTestIterativeVector,nRuns,Vector3d(1.0,0.0,0.0),limit)
 #@time runTest(calcTestRecursiveVector,nRuns,Vector3d(1.0,0.0,0.0),limit)
 #@time runTestRecursive(nRuns,limit)
 
-limit = 200.0
+limit = 400.0
 
 println("----------------")
-@time runTestVector(calcTestIterativeVector,nRuns,limit)
+Profile.init(60000000,0.00001)
+#@profile runTest(calcTestIterativeVector,nRuns,Vector3d(1.0,2.0,3.0),limit)
+@profile runTest(calcTestIterative,nRuns,1.0,limit)
+ProfileView.view()
+
 #@time runTest(calcTestRecursiveVector,nRuns,Vector3d(1.0,1.0,1.0),limit)
 #val = Vector3d(1.0,1.0,1.0)
 #@time runTest(calcTestRecursiveVector2!,nRuns,val,limit)
@@ -123,13 +119,10 @@ println("----------------")
 #println("----------------")
 #@time runTest(calcTestIterativeArray,nRuns,[1.0],limit)
 #@time runTest(calcTestRecursiveArray,nRuns,[1.0],limit)
-println("----------------")
-@time runTest(calcTestIterative,nRuns,limit)
+#println("----------------")
+#@time runTest(calcTestIterative,nRuns,1.0,limit)
 #@time runTest(calcTestRecursive,nRuns,1.0,limit)
 
-
-#code_typed(calcTestIterativeVector,(Vector3d,Float64))
-#code_typed(calcTestIterative,(Float64,Float64))
 
 #@time runTestIterative(nRuns,limit)
 #@time runTestRecursive(nRuns,limit)

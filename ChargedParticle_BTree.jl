@@ -3,10 +3,9 @@ module ChargedParticle_BTree
   using ChargedParticle_Base
   using Compat
 
+  export BTree,BTreeNode,insertParticle,computeChargeDistribution,calculateEFieldFromTree,calculateEFieldFromTreeOpt,calculateEFieldOpt
 
-  export BTreeNode,BTree,insertParticle,computeChargeDistribution,calculateEFieldFromTree,calculateEFieldFromTreeOpt,calculateEFieldOpt
-
-  const epsilon0 = 8.854e-12
+  const epsilon0 = 1.0#8.854e-12
   const elecConst = 4*pi*epsilon0
   const theta = 0.9
 
@@ -14,7 +13,7 @@ abstract Enum
 immutable Quadrant <: Enum
     val::Int
     function Quadrant(i::Integer)
-        @assert 1<=i<=4
+        #@assert 1<=i<=4
         new(i)
     end
 end
@@ -24,32 +23,34 @@ const SE = Quadrant(3)
 const NE = Quadrant(4)
 
 
+
 type BTreeNode
-  parent::Nullable{BTreeNode}
+  #parent::Nullable{BTreeNode}
+  root::Bool
   quadNodes::Array{Nullable{BTreeNode},1}
-  center::Array{Float64,1}
-  min::Array{Float64,1}
-  max::Array{Float64,1}
+  center::Vector3d
+  min::Vector3d
+  max::Vector3d
   particle::Nullable{ChargedParticle}
-  numP::Int
+  numP::Int64
   charge::Float64
-  centerOfCharge::Array{Float64,1}
+  centerOfCharge::Vector3d
 end
 
 BTreeNode() = BTreeNode(
-  Nullable{BTreeNode}(),
+  false,
   [Nullable{BTreeNode}(),Nullable{BTreeNode}(),Nullable{BTreeNode}(),Nullable{BTreeNode}()],
-  [0,0,0],
-  [0,0,0],
-  [0,0,0],
+  Vector3d(0.0,0.0,0.0),
+  Vector3d(0.0,0.0,0.0),
+  Vector3d(0.0,0.0,0.0),
   Nullable{ChargedParticle}(),
   0,
   0.0,
-  [0,0,0]
+  Vector3d(0.0,0.0,0.0)
   )
 
-BTreeNode(min::Array{Float64,1},max::Array{Float64,1},parent::Nullable{BTreeNode}=Nullable{BTreeNode}()) = BTreeNode(
-  parent,
+BTreeNode(min::Vector3d,max::Vector3d) = BTreeNode(
+  false,
   [Nullable{BTreeNode}(),Nullable{BTreeNode}(),Nullable{BTreeNode}(),Nullable{BTreeNode}()],
   min+(max-min)/2.0,
   min,
@@ -57,30 +58,42 @@ BTreeNode(min::Array{Float64,1},max::Array{Float64,1},parent::Nullable{BTreeNode
   Nullable{ChargedParticle}(),
   0,
   0.0,
-  [0,0,0]
+  Vector3d(0.0,0.0,0.0)
   )
-
-BTreeNode(min::Array{Float64,1},max::Array{Float64,1},parent::BTreeNode) = BTreeNode(
-  min,
-  max,
-  Nullable{BTreeNode}(parent)
-  )
-
 
 type BTree
   root::BTreeNode
 end
 
-function BTree(min::Array{Float64,1},max::Array{Float64,1})
-  BTree( BTreeNode(min,max,Nullable{BTreeNode}()))
+function BTree(min::Vector3d,max::Vector3d)
+  BTree( BTreeNode(min,max))
 end
 
 
 function isRoot(node::BTreeNode)
-  isnull(node.parent) ? true : false
+  return node.root
 end
 
-function getQuadrant(self::BTreeNode,location::Array{Float64,1})
+function getQuadrant(self::BTreeNode,location::Vector3d)
+  #smaller1::Bool = (location[1]<=self.center[1])
+  #smaller2::Bool = (location[2]<=self.center[2])
+
+  if ((location.x<=self.center.x))
+    if ((location.y<=self.center.y))
+      return SW
+    else
+      return NW
+    end
+  else
+    if ((location.y>=self.center.y))
+      return NE
+    else
+      return SE
+    end
+  end
+end
+
+function getQuadrantOld(self::BTreeNode,location::Vector3d)
   if (location[1]<=self.center[1] && location[2]<=self.center[2])
     return SW
   elseif (location[1]<=self.center[1] && location[2]>=self.center[2])
@@ -91,26 +104,23 @@ function getQuadrant(self::BTreeNode,location::Array{Float64,1})
     return SE
   end
 end
-
 function getQuadrant(self::BTreeNode,particle::ChargedParticle)
   getQuadrant(self,particle.location)
 end
 
 function createQuadNode(self::BTreeNode, quad::Quadrant)
   if quad == SW
-    return BTreeNode(self.min,self.center,self)
+    return BTreeNode(self.min,self.center)
   elseif quad == NW
     return BTreeNode(
-              [self.min[1],self.center[2],self.min[3]],
-              [self.center[1],self.max[2],self.min[3]],
-              self)
+              Vector3d(self.min.x,self.center.y,self.min.z),
+              Vector3d(self.center.x,self.max.y,self.min.z))
   elseif quad == NE
-    return BTreeNode(self.center,self.max,self)
+    return BTreeNode(self.center,self.max)
   elseif quad == SE
     return BTreeNode(
-              [self.center[1],self.min[2],self.min[3]],
-              [self.max[1],self.center[2],self.min[3]],
-              self)
+              Vector3d(self.center.x,self.min.y,self.min.z),
+              Vector3d(self.max.x,self.center.y,self.min.z))
   end
 end
 
@@ -142,7 +152,7 @@ function insertParticle(self::BTreeNode, particle::ChargedParticle)
       end
       insertParticle(get(self.quadNodes[quad.val]),particle)
     end
-  elseif self.numP == 0
+  else
     self.particle = particle
   end
   self.numP+=1
@@ -151,7 +161,10 @@ end
 function computeChargeDistribution(self::BTreeNode)
   #println("compChargeDist 152 "*string(self.center))
   if self.numP == 1
-    self.centerOfCharge = deepcopy(get(self.particle).location)
+    self.centerOfCharge.x = get(self.particle).location.x
+    self.centerOfCharge.y = get(self.particle).location.y
+    self.centerOfCharge.z = get(self.particle).location.z
+      #deepcopy(get(self.particle).location)
     self.charge = get(self.particle).charge
     #println("self.centerOfCharge 155"*string(self.centerOfCharge))
   else
@@ -162,7 +175,9 @@ function computeChargeDistribution(self::BTreeNode)
         computeChargeDistribution(node)
         #println("compChargeDist 163 "*string(node.center)*string(self.charge)*string(self.centerOfCharge))
         self.charge+=node.charge
-        self.centerOfCharge += node.charge*node.centerOfCharge
+        self.centerOfCharge.x += node.charge*node.centerOfCharge.x
+        self.centerOfCharge.y += node.charge*node.centerOfCharge.y
+        self.centerOfCharge.z += node.charge*node.centerOfCharge.z
         #println("compChargeDist 166 "*string(node.center)*string(self.charge)*string(self.centerOfCharge))
       end
     end
@@ -177,7 +192,7 @@ function computeChargeDistribution(self::BTreeNode)
   end
 end
 
-function calculateEField(r1::Array{Float64,1},r2::Array{Float64,1},charge2::Float64)
+function calculateEField(r1::Vector3d,r2::Vector3d,charge2::Float64)
   d = norm(r1-r2)
   if d>0
     #println(d)
@@ -187,7 +202,7 @@ function calculateEField(r1::Array{Float64,1},r2::Array{Float64,1},charge2::Floa
     E = charge2/elecConst * (r1-r2)/(d^3.0)
     #println(E)
   else
-    E = [0.0,0.0,0.0]
+    E = Vector3d(0.0,0.0,0.0)
   end
 end
 
@@ -197,13 +212,13 @@ function calculateEFieldFromTree(self::BTreeNode,targetP::ChargedParticle)
     eField = calculateEField(targetP.location,get(self.particle).location,get(self.particle).charge)
   else
     r = norm(targetP.location-self.centerOfCharge)
-    d = self.max[1] - self.min[1]
+    d = self.max.x - self.min.x
 
     if d/r < theta
       #println("calculateEfieldFromTree 194")
       eField = calculateEField(targetP.location,self.centerOfCharge,self.charge)
     else
-      eField = [0.0,0.0,0.0]
+      eField = Vector3d(0.0,0.0,0.0)
       for node in self.quadNodes
         if !isnull(node)
           eField+= calculateEFieldFromTree(get(node),targetP)
@@ -215,7 +230,7 @@ function calculateEFieldFromTree(self::BTreeNode,targetP::ChargedParticle)
 end
 
 
-function calculateEFieldOpt(r1::Array{Float64,1},r2::Array{Float64,1},charge2::Float64)
+function calculateEFieldOpt(r1::Vector3d,r2::Vector3d,charge2::Float64)
   #local d::Float64 = norm(r1-r2)
   #if d>0
     #println(d)
