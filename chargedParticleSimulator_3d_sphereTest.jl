@@ -3,7 +3,7 @@ push!(LOAD_PATH, ".")
 # Simple 2d simulation of charged particle diffusion and coulomb repulsion
 # Primary Purpose:
 # Learn Julia and Julias Package system, test reimplemenation of Barnes-Hut Method in 2d
-module ChargedParticleSimulator_2d
+module ChargedParticleSimulator_3d_sphereTest
 
 
 export runSim
@@ -25,7 +25,7 @@ type ChargedParticleCapillarySimulation
   meanVelocity::Float64
 end
 
-ChargedParticleCapillarySimulation(nParticles,diffusionCoefficient,charge) = ChargedParticleCapillarySimulation(
+ChargedParticleSimulation(nParticles,diffusionCoefficient,charge) = ChargedParticleCapillarySimulation(
   [ChargedParticle(Vector3d(0.0,0.0,0.0),charge) for i = 1:nParticles],
   zeros(3,nParticles),
   diffusionCoefficient,
@@ -38,7 +38,7 @@ ChargedParticleCapillarySimulation(nParticles,diffusionCoefficient,charge) = Cha
 
 
 function initSim(nParticles,diffusionCoefficient,charge)
-  sim = ChargedParticleCapillarySimulation(nParticles,diffusionCoefficient,charge)
+  sim = ChargedParticleSimulation(nParticles,diffusionCoefficient,charge)
   return sim
 end
 
@@ -46,7 +46,15 @@ function initDiscParticleCloud(sim,radius)
   for part in sim.particles
     R = rand()*radius
     phi = rand()*pi*2
-    part.location=Vector3d(R*cos(phi),R*sin(phi),0.0)
+    part.location=Vector3d(R*cos(phi),0.0,R*sin(phi))
+  end
+  updatePositionsFromParticleCloud(sim)
+end
+
+function initBoxParticleCloud(sim,boxSize)
+  for part in sim.particles
+    part.location=Vector3d(rand()-0.5,rand()-0.5,rand()-0.5)
+    part.location= part.location*boxSize
   end
   updatePositionsFromParticleCloud(sim)
 end
@@ -61,7 +69,7 @@ function updatePositionsFromParticleCloud(sim)
   end
 end
 
-function diffuseParticlesOnXYPlane(part,diffusionCoefficient,dt)
+function diffuseParticles(part,diffusionCoefficient,dt)
     phi = rand()*2*pi
     dL = sqrt(4*dt*diffusionCoefficient)
     part.location.x+= dL*cos(phi)
@@ -72,26 +80,10 @@ function rPos(part)
   sqrt(part.location.x^2.0 + part.location.y^2.0)
 end
 
-function transportInZFlow(part,sim,dt)
-  part.location.z+= sim.zVelocityFunction(part.location.z,rPos(part))*dt
-end
-
-function collisonCapillaryWalls(part,sim)
+function collisonWalls(part,sim)
   if (rPos(part) > sim.c_R_m)
     part.active = false
   end
-end
-
-function crossectionArea(sim)
-  pi * sim.c_R_m^2.0
-end
-
-function laminarIncompressibleVelocityProfile(sim,Q)
-        sim.meanVelocity = Q/crossectionArea(sim)
-        sim.zVelocityFunction =
-          function(z,r)
-            2.0*sim.meanVelocity *(1-(r/sim.c_R_m)^2.0)
-          end
 end
 
 
@@ -113,11 +105,12 @@ function runSim(ts=100,nParticles=10000;
   sim.c_R_m = 5/1000.0/2.0
   sim.c_L_m = 16/100.0
   #initDiscParticleCloud(sim,sim.c_R_m*0.9)
-  initDiscParticleCloud(sim,sim.c_R_m*0.95)
+  #initDiscParticleCloud(sim,sim.c_R_m*0.95)
+  initBoxParticleCloud(sim,sim.c_R_m*0.3)
   #laminarIncompressibleVelocityProfile(sim,1.0/60000.0)
 
-  treeMin = Vector3d(-sim.c_R_m*2,-sim.c_R_m*2,0)
-  treeMax = Vector3d( sim.c_R_m*2, sim.c_R_m*2,0)
+  treeMin = Vector3d(-sim.c_R_m*2,-sim.c_R_m*2,-sim.c_R_m*2)
+  treeMax = Vector3d( sim.c_R_m*2, sim.c_R_m*2, sim.c_R_m*2)
   for i=0:ts
     if doBuildTree
       tree = BTree(treeMin,treeMax)
@@ -130,10 +123,10 @@ function runSim(ts=100,nParticles=10000;
 
     for part in sim.particles
       if part.active == true
-        if doDiffusion
-          diffuseParticlesOnXYPlane(part,diffusionCoefficient,dt)
-        end
-        transportInZFlow(part,sim,dt)
+        #if doDiffusion
+        #  diffuseParticlesOnXYPlane(part,diffusionCoefficient,dt)
+        #end
+        #transportInZFlow(part,sim,dt)
         if doCalcEField==1
           eField = calculateEFieldFromTree(tree.root,part)
           #print(eField)
@@ -145,15 +138,15 @@ function runSim(ts=100,nParticles=10000;
           coulombRepulsion(part,eField,dt)
         end
 
-        collisonCapillaryWalls(part,sim)
+        collisonWalls(part,sim)
       end
     end
     updatePositionsFromParticleCloud(sim)
 
     if i % plotRate == 0
       #ChargedParticleVisualization_BTree.plotBTree(tree,"treeTest_"*@sprintf("%05d", i))
-      ChargedParticleVisualization_PyPlot.plotParticlesXY(sim,"test2d_"*@sprintf("%05d", i))
-      #ChargedParticleVisualization_PyPlot.plotParticles3d(sim,"test3d_"*@sprintf("%05d", i),sim.c_L_m/5)
+      #ChargedParticleVisualization_PyPlot.plotParticlesXY(sim,"test2d_"*@sprintf("%05d", i))
+      ChargedParticleVisualization_PyPlot.plotParticles3d(sim,"test3d_"*@sprintf("%05d", i),sim.c_L_m/5)
       ChargedParticleVisualization_Gadfly.plot2dHistogramXY(sim,"testHist_XY_"*@sprintf("%05d", i))
       ChargedParticleVisualization_Gadfly.plot2dHistogramXZ(sim,"testHist_XZ_"*@sprintf("%05d", i))
     end

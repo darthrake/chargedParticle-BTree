@@ -97,25 +97,51 @@ function runTestVector(fct,nRuns,limit)
 end
 
 
-#println(eField)
-#runTestOpt(100000)
-#Profile.clear()
-#Profile.init()
-#@profile runTestOpt(100000
+function testBool(nRuns)
+  #result = 0.0
+  A = true
+  j = 0
+  for i=1:nRuns
+    if !A == false
+      j=i
+    end
+  end
+  return j
+end
+
+function testNull(nRuns)
+  #result = 0.0
+  A = Nullable{Int64}(1)
+  j = 0
+  for i=1:nRuns
+    if !isnull(A)
+      j=i
+    end
+  end
+  return j
+end
+
+nRuns = 10000000
+@time testBool(nRuns)
+@time testNull(nRuns)
+@time testBool(nRuns)
+@time testNull(nRuns)
+
+
 nRuns = 1000
 limit = 200.0
 #@time runTest(calcTestIterativeArray,nRuns,[1.0],limit)
 #@time runTest(calcTestRecursiveArray,nRuns,[1.0],limit)
-@time runTest(calcTestIterative,nRuns,limit)
+#@time runTest(calcTestIterative,nRuns,limit)
 #@time runTest(calcTestRecursive,nRuns,1.0,limit)
-@time runTestVector(calcTestIterativeVector,nRuns,limit)
+#@time runTestVector(calcTestIterativeVector,nRuns,limit)
 #@time runTest(calcTestRecursiveVector,nRuns,Vector3d(1.0,0.0,0.0),limit)
 #@time runTestRecursive(nRuns,limit)
 
 limit = 200.0
 
 println("----------------")
-@time runTestVector(calcTestIterativeVector,nRuns,limit)
+#@time runTestVector(calcTestIterativeVector,nRuns,limit)
 #@time runTest(calcTestRecursiveVector,nRuns,Vector3d(1.0,1.0,1.0),limit)
 #val = Vector3d(1.0,1.0,1.0)
 #@time runTest(calcTestRecursiveVector2!,nRuns,val,limit)
@@ -124,7 +150,7 @@ println("----------------")
 #@time runTest(calcTestIterativeArray,nRuns,[1.0],limit)
 #@time runTest(calcTestRecursiveArray,nRuns,[1.0],limit)
 println("----------------")
-@time runTest(calcTestIterative,nRuns,limit)
+#@time runTest(calcTestIterative,nRuns,limit)
 #@time runTest(calcTestRecursive,nRuns,1.0,limit)
 
 

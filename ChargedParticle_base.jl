@@ -6,10 +6,10 @@ import Base.(-)
 import Base.(*)
 import Base.(norm)
 
-export ChargedParticle,Vector3d,+,/,-,norm
+export ChargedParticle,Vector3d,+,/,-,norm,toArray
 
 
-const elemCharge = 1.0#1.6e-19;
+const elemCharge = 1.6e-19;
 
 type Vector3d
   x::Float64
@@ -29,6 +29,9 @@ function *(a::Float64,b::Vector3d)
   Vector3d(a*b.x,a*b.y,a*b.z)
 end
 
+function *(a::Vector3d,b::Float64)
+  Vector3d(a.x*b,a.y*b,a.z*b)
+end
 
 function /(a::Float64,b::Vector3d)
   Vector3d(a/b.x,a/b.y,a/b.z)
@@ -39,7 +42,11 @@ function /(a::Vector3d,b::Float64)
 end
 
 function norm(v::Vector3d)
-  sqrt(v.x^2+v.y^2+v.z^2)
+  sqrt(v.x*v.x+v.y*v.y+v.z*v.z)
+end
+
+function toArray(v::Vector3d)
+  [v.x,v.y,v.z]
 end
 
 type ChargedParticle

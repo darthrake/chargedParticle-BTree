@@ -72,8 +72,10 @@ function testRunScaled()
   print(result)
 end
 
-nIons = 100000;
+nIons = 1000000;
 #testRunScaled()
+testRun(nIons)
+testRun(nIons)
 testRun(nIons)
 testRun(nIons)
 #testRun(nIons)

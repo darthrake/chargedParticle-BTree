@@ -7,7 +7,7 @@ using PyPlot
 using ChargedParticleVisualization_Utilities
 
 function plotParticlesXY(sim,filename)
-  boxsize = 1e-3
+  boxsize = sim.c_R_m
   ioff()
   fig = figure()
   pl = plot(sim.positions[1,:],sim.positions[2,:], "r.")
@@ -32,7 +32,7 @@ function plotParticles3d(sim,filename,zLimit=sim.c_L_m)
   subplot(111, projection="3d")
   xlim(-sim.c_R_m, sim.c_R_m)
   ylim(-sim.c_R_m, sim.c_R_m)
-  zlim(0,zLimit)
+  zlim(-sim.c_R_m, sim.c_R_m)
   xlabel("x (m)")
   ylabel("y (m)")
   zlabel("z (m)")
