@@ -72,12 +72,28 @@ function testRunScaled()
   print(result)
 end
 
-nIons = 1000000;
+nIons = 100000;
 #testRunScaled()
-testRun(nIons)
-testRun(nIons)
-testRun(nIons)
-testRun(nIons)
+
+use_gc = false
+@time begin
+
+gc_enable(use_gc)
+
+for i=1:4
+  testRun(nIons)
+  if !use_gc
+    gc_enable(true)
+    @time gc()
+    gc_enable(false)
+  end
+end
+
+println("\ntotal time")
+end
+
+#Profile.print(format=:flat, sortedby = :count)
+#ProfileView.view()
 #testRun(nIons)
 #testRun(nIons)
 #testRun(nIons)

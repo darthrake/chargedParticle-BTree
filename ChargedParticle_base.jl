@@ -11,7 +11,7 @@ export ChargedParticle,Vector3d,+,/,-,norm,toArray
 
 const elemCharge = 1.6e-19;
 
-type Vector3d
+immutable Vector3d
   x::Float64
   y::Float64
   z::Float64

@@ -177,9 +177,7 @@ end
 function computeChargeDistribution(self::BTreeNode)
   #println("compChargeDist 152 "*string(self.center))
   if self.numP == 1
-    self.centerOfCharge.x = get(self.particle).location.x
-    self.centerOfCharge.y = get(self.particle).location.y
-    self.centerOfCharge.z = get(self.particle).location.z
+    self.centerOfCharge = Vector3d(get(self.particle).location.x, get(self.particle).location.y, get(self.particle).location.z)
       #deepcopy(get(self.particle).location)
     self.charge = get(self.particle).charge
     #println("self.centerOfCharge 155"*string(self.centerOfCharge))
@@ -191,9 +189,8 @@ function computeChargeDistribution(self::BTreeNode)
         computeChargeDistribution(node)
         #println("compChargeDist 163 "*string(node.center)*string(self.charge)*string(self.centerOfCharge))
         self.charge+=node.charge
-        self.centerOfCharge.x += node.charge*node.centerOfCharge.x
-        self.centerOfCharge.y += node.charge*node.centerOfCharge.y
-        self.centerOfCharge.z += node.charge*node.centerOfCharge.z
+        self.centerOfCharge += Vector3d(node.charge*node.centerOfCharge.x, node.charge*node.centerOfCharge.y, node.charge*node.centerOfCharge.z)
+
         #println("compChargeDist 166 "*string(node.center)*string(self.charge)*string(self.centerOfCharge))
       end
     end
